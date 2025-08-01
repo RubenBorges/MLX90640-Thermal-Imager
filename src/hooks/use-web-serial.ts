@@ -34,7 +34,7 @@ export const useWebSerial = (
     const navigatorWithSerial = window.navigator as Navigator;
 
     if (!navigatorWithSerial.serial) {
-      onError(new Error('Web Serial API not supported by this browser. Try using Chrome or Edge.'));
+      onError(new Error('Web Serial API not supported. Try a Chromium-based browser like Chrome or Edge.'));
       return;
     }
 
@@ -52,7 +52,14 @@ export const useWebSerial = (
       
       startReading();
     } catch (err: any) {
-        if (err.name !== 'NotFoundError') {
+        if (err.name === 'NotFoundError') {
+             // This error occurs if the user cancels the port selection dialog.
+             // We can choose to silently ignore it or show a gentle notification.
+             // For now, we'll just log it and not bother the user.
+             console.log("User cancelled port selection.");
+        } else if (err.name === 'SecurityError') {
+             onError(new Error('Permission to access serial port was denied. Please ensure the site is loaded over HTTPS.'));
+        } else {
              onError(new Error(`Failed to connect: ${err.message}`));
         }
     }
@@ -67,8 +74,10 @@ export const useWebSerial = (
         } catch(error) {
             // Ignore cancel error
         } finally {
-            readerRef.current.releaseLock();
-            readerRef.current = null;
+            if (readerRef.current) {
+                readerRef.current.releaseLock();
+                readerRef.current = null;
+            }
         }
     }
     
@@ -87,6 +96,7 @@ export const useWebSerial = (
   const startReading = useCallback(async () => {
     if (!portRef.current?.readable) return;
     
+    // Use a TextDecoderStream to handle UTF-8 conversion.
     const textDecoder = new TextDecoderStream();
     const readableStreamClosed = portRef.current.readable.pipeTo(textDecoder.writable);
     const reader = textDecoder.readable.getReader();
@@ -97,12 +107,15 @@ export const useWebSerial = (
       while (keepReadingRef.current) {
         const { value, done } = await reader.read();
         if (done) {
+          // Allow the serial port to be closed later.
+          reader.releaseLock();
           break;
         }
         
         buffer += value;
 
         let newlineIndex;
+        // Process all complete lines in the buffer
         while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
           const line = buffer.slice(0, newlineIndex).trim();
           buffer = buffer.slice(newlineIndex + 1);
@@ -117,14 +130,17 @@ export const useWebSerial = (
         disconnect();
       }
     } finally {
-        reader.releaseLock();
-        readerRef.current = null;
+        if (readerRef.current) {
+            readerRef.current.releaseLock();
+            readerRef.current = null;
+        }
     }
 
   }, [onData, onError, disconnect]);
 
   useEffect(() => {
     return () => {
+      // Ensure disconnection on component unmount
       disconnect();
     };
   }, [disconnect]);
