@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { useSerialSimulator } from "@/hooks/use-serial-simulator";
+import { useWebSerial } from "@/hooks/use-web-serial";
 import { ThermalDisplay } from "@/components/thermal-display";
 import { Legend } from "@/components/legend";
 import { ControlPanel } from "@/components/control-panel";
 import { Thermometer } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const PIXEL_COUNT = 768;
 
@@ -14,6 +15,7 @@ export default function ThermalVisionPage() {
   const [minTemp, setMinTemp] = useState(0);
   const [maxTemp, setMaxTemp] = useState(0);
   const [isBlurEnabled, setIsBlurEnabled] = useState(true);
+  const { toast } = useToast();
 
   const handleData = useCallback((csvString: string) => {
     if (!csvString || csvString.length === 0) return;
@@ -43,26 +45,34 @@ export default function ThermalVisionPage() {
     setMinTemp(localMin);
     setMaxTemp(localMax);
   }, []);
+  
+  const handleError = useCallback((error: Error) => {
+    toast({
+        variant: "destructive",
+        title: "Serial Connection Error",
+        description: error.message,
+    });
+  }, [toast]);
 
-  const { isConnected, start, stop } = useSerialSimulator(handleData);
+  const { isConnected, connect, disconnect } = useWebSerial(handleData, handleError);
 
   const handleConnectionToggle = () => {
     if (isConnected) {
-      stop();
+      disconnect();
       setTemperatureData([]);
       setMinTemp(0);
       setMaxTemp(0);
     } else {
-      start();
+      connect();
     }
   };
   
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      stop();
+      disconnect();
     };
-  }, [stop]);
+  }, [disconnect]);
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4 sm:p-8 md:p-12">
@@ -76,7 +86,7 @@ export default function ThermalVisionPage() {
             Thermal Vision
           </h1>
           <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Visualizing data from a simulated MLX90640 sensor. Connect to the device to see a real-time thermal heatmap.
+            Connect to your MLX90640 sensor via USB to see a real-time thermal heatmap.
           </p>
         </div>
 
