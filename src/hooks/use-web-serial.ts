@@ -17,7 +17,7 @@ interface SerialPort extends EventTarget {
 // Define the structure for the navigator object
 interface Navigator {
   serial: {
-    requestPort(): Promise<SerialPort>;
+    requestPort(options?: { filters: { usbVendorId: number }[] }): Promise<SerialPort>;
   };
 }
 
@@ -40,7 +40,16 @@ export const useWebSerial = (
     }
 
     try {
-      const port = await navigatorWithSerial.serial.requestPort();
+      // Provide filters to help identify the correct device, especially on Android.
+      const port = await navigatorWithSerial.serial.requestPort({
+        filters: [
+            // Common Vendor IDs for Arduino, ESP32, and other microcontrollers
+            { usbVendorId: 0x2341 }, // Arduino LLC
+            { usbVendorId: 0x1A86 }, // WCH.CN (CH340)
+            { usbVendorId: 0x10C4 }, // Silicon Labs (CP210x)
+            { usbVendorId: 0x0403 }, // FTDI
+        ],
+      });
       await port.open({ baudRate: 115200 }); // Standard baud rate for Arduino/ESP32
       portRef.current = port;
       setIsConnected(true);
@@ -57,7 +66,7 @@ export const useWebSerial = (
              // This error occurs if the user cancels the port selection dialog.
              // We can choose to silently ignore it or show a gentle notification.
              // For now, we'll just log it and not bother the user.
-             console.log("User cancelled port selection.");
+             console.log("User cancelled port selection or no matching device found.");
         } else if (err.name === 'SecurityError') {
              onError(new Error('Permission to access serial port was denied. Please ensure the site is loaded over HTTPS.'));
         } else {
