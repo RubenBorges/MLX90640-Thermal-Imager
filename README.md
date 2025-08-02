@@ -3,6 +3,8 @@ This application is designed for use with MLX90640 IR sensors. This program shou
 *SparkFun Qwiic_IR_Array_MLX90640 repo:
 https://github.com/sparkfun/Qwiic_IR_Array_MLX90640/blob/master/
 
+**This web application has been tested with Windows Node.js local hosting and Google Firebase remote app hosting. Web application may still function on your mobile device -- check "Issues"** 
+
 HOW TO LAUNCH:
 
 1) Git clone this repository to a local folder.
