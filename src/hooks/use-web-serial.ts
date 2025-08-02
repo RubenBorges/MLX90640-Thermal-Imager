@@ -108,23 +108,19 @@ export const useWebSerial = (
   const startReading = useCallback(async () => {
     if (!portRef.current?.readable) return;
     
-    // Use a TextDecoderStream to handle UTF-8 conversion.
-    const textDecoder = new TextDecoderStream();
-    const readableStreamClosed = portRef.current.readable.pipeTo(textDecoder.writable);
-    const reader = textDecoder.readable.getReader();
-    readerRef.current = reader as any; // The types are slightly different, this is a safe cast
+    readerRef.current = portRef.current.readable.getReader();
+    const reader = readerRef.current;
+    const decoder = new TextDecoder();
     let buffer = '';
 
     try {
       while (keepReadingRef.current) {
         const { value, done } = await reader.read();
         if (done) {
-          // Allow the serial port to be closed later.
-          reader.releaseLock();
           break;
         }
         
-        buffer += value;
+        buffer += decoder.decode(value, { stream: true });
 
         let newlineIndex;
         // Process all complete lines in the buffer
