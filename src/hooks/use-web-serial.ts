@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import "web-serial-polyfill";
 
 // Define the structure for the serial port object
 interface SerialPort extends EventTarget {
@@ -34,7 +35,7 @@ export const useWebSerial = (
     const navigatorWithSerial = window.navigator as Navigator;
 
     if (!navigatorWithSerial.serial) {
-      onError(new Error('Web Serial API not supported. Try a Chromium-based browser like Chrome or Edge.'));
+      onError(new Error('Web Serial API not supported by this browser.'));
       return;
     }
 
