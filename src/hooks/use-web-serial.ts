@@ -14,11 +14,13 @@ interface SerialPort extends EventTarget {
   removeEventListener(type: 'disconnect', listener: (ev: Event) => any, options?: boolean | EventListenerOptions): void;
 }
 
-// Define the structure for the navigator object
-interface Navigator {
+// Augment the existing Navigator interface to include the serial property
+declare global {
+  interface Navigator {
   serial: {
     requestPort(options?: { filters: ({ usbVendorId: number, usbProductId?: number })[] }): Promise<SerialPort>;
   };
+  }
 }
 
 export const useWebSerial = (
@@ -60,7 +62,7 @@ export const useWebSerial = (
 
   const connect = useCallback(async () => {
     // Type assertion for navigator
-    const navigatorWithSerial = window.navigator as Navigator;
+    const navigatorWithSerial = window.navigator;
 
     if (!navigatorWithSerial.serial) {
       onError(new Error('Web Serial API not supported by this browser.'));
