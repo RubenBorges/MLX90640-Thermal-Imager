@@ -30,6 +30,34 @@ export const useWebSerial = (
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const keepReadingRef = useRef(true);
   
+  const disconnect = useCallback(async () => {
+    keepReadingRef.current = false;
+    
+    if (readerRef.current) {
+        try {
+            // This will interrupt the reader's read() promise
+            await readerRef.current.cancel();
+        } catch(error) {
+            // Ignore cancel error, it's expected
+        }
+    }
+    
+    if (portRef.current) {
+      try {
+        // This will release any resources held by the port
+        await portRef.current.close();
+      } catch (err: any) {
+        // Ignore errors on close, the port might already be gone
+      }
+    }
+
+    portRef.current = null;
+    readerRef.current = null;
+    setIsConnected(false);
+
+  }, []);
+
+
   const connect = useCallback(async () => {
     // Type assertion for navigator
     const navigatorWithSerial = window.navigator as Navigator;
@@ -40,7 +68,7 @@ export const useWebSerial = (
     }
 
     try {
-      // Provide filters to help identify the correct device, especially on Android.
+      // Provide filters to help identify the correct device.
       const port = await navigatorWithSerial.serial.requestPort({
         filters: [
             // User's specific ESP32-S3
@@ -57,17 +85,19 @@ export const useWebSerial = (
       setIsConnected(true);
       keepReadingRef.current = true;
       
+      // The disconnect event can be unreliable with polyfills.
+      // A more robust way is to handle errors during the read loop.
       port.addEventListener('disconnect', () => {
-        disconnect();
+        // Don't call disconnect() here directly to avoid potential race conditions.
+        // The read loop will fail and handle the disconnection gracefully.
         onError(new Error('Device disconnected.'));
+        setIsConnected(false);
+        portRef.current = null;
       });
       
       startReading();
     } catch (err: any) {
         if (err.name === 'NotFoundError') {
-             // This error occurs if the user cancels the port selection dialog.
-             // We can choose to silently ignore it or show a gentle notification.
-             // For now, we'll just log it and not bother the user.
              console.log("User cancelled port selection or no matching device found.");
         } else if (err.name === 'SecurityError') {
              onError(new Error('Permission to access serial port was denied. Please ensure the site is loaded over HTTPS.'));
@@ -75,48 +105,20 @@ export const useWebSerial = (
              onError(new Error(`Failed to connect: ${err.message}`));
         }
     }
-  }, [onError]);
-
-  const disconnect = useCallback(async () => {
-    keepReadingRef.current = false;
-    
-    if (readerRef.current) {
-        try {
-            await readerRef.current.cancel();
-        } catch(error) {
-            // Ignore cancel error
-        } finally {
-            if (readerRef.current) {
-                readerRef.current.releaseLock();
-                readerRef.current = null;
-            }
-        }
-    }
-    
-    if (portRef.current) {
-      try {
-        await portRef.current.close();
-      } catch (err: any) {
-        // Ignore errors on close
-      } finally {
-        portRef.current = null;
-        setIsConnected(false);
-      }
-    }
-  }, []);
+  }, [onError, disconnect]);
 
   const startReading = useCallback(async () => {
     if (!portRef.current?.readable) return;
     
     readerRef.current = portRef.current.readable.getReader();
-    const reader = readerRef.current;
     const decoder = new TextDecoder();
     let buffer = '';
 
     try {
-      while (keepReadingRef.current) {
-        const { value, done } = await reader.read();
+      while (keepReadingRef.current && portRef.current) {
+        const { value, done } = await readerRef.current.read();
         if (done) {
+          // The reader has been cancelled, which is part of the disconnect process.
           break;
         }
         
@@ -133,25 +135,28 @@ export const useWebSerial = (
         }
       }
     } catch (error: any) {
-      if(keepReadingRef.current) { // Don't show error if we intentionally disconnected
+      if(keepReadingRef.current) { 
         onError(new Error(`Error reading from serial port: ${error.message}`));
         disconnect();
       }
     } finally {
-        if (readerRef.current) {
-            readerRef.current.releaseLock();
-            readerRef.current = null;
+        if(readerRef.current){
+           readerRef.current.releaseLock();
+           readerRef.current = null;
         }
     }
 
   }, [onData, onError, disconnect]);
 
   useEffect(() => {
+    // This is a cleanup effect. If the component using this hook unmounts,
+    // we must ensure we disconnect to prevent memory leaks.
     return () => {
-      // Ensure disconnection on component unmount
-      disconnect();
+      if(isConnected) {
+        disconnect();
+      }
     };
-  }, [disconnect]);
+  }, [isConnected, disconnect]);
 
   return { isConnected, connect, disconnect };
 };
