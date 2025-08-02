@@ -17,7 +17,7 @@ interface SerialPort extends EventTarget {
 // Define the structure for the navigator object
 interface Navigator {
   serial: {
-    requestPort(options?: { filters: { usbVendorId: number }[] }): Promise<SerialPort>;
+    requestPort(options?: { filters: ({ usbVendorId: number, usbProductId?: number })[] }): Promise<SerialPort>;
   };
 }
 
@@ -43,7 +43,9 @@ export const useWebSerial = (
       // Provide filters to help identify the correct device, especially on Android.
       const port = await navigatorWithSerial.serial.requestPort({
         filters: [
-            // Common Vendor IDs for Arduino, ESP32, and other microcontrollers
+            // User's specific ESP32-S3
+            { usbVendorId: 0x1A86, usbProductId: 0x55D3 },
+            // Common Vendor IDs for other microcontrollers
             { usbVendorId: 0x2341 }, // Arduino LLC
             { usbVendorId: 0x1A86 }, // WCH.CN (CH340)
             { usbVendorId: 0x10C4 }, // Silicon Labs (CP210x)
