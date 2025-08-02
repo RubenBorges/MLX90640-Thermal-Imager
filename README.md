@@ -7,13 +7,13 @@ HOW TO LAUNCH:
 
 1) Git clone this repository to a local folder.
 2) Open the local directory in terminal.
-3) Enter the following Node Package Manager (npm) commands in your terminal window OR use the equivalent commands for alternative package managers:
-    "npm install"    
-    "npm run dev"
-4) Open a web browser and navigate to the address provided by your package manager. If successful you should see:
+3) Enter the following Node Package Manager (npm) commands in your terminal window OR use the equivalent commands for alternative package managers:    
+   - "npm install"    
+   - "npm run dev"
+5) Open a web browser and navigate to the address provided by your package manager. If successful you should see:
 <img width="1569" height="1451" alt="image" src="https://github.com/user-attachments/assets/b59614f4-c302-4a96-a2ea-d2fbee3db96a" />
 
-5) Press "Connect to Device," select your serial device from the popup menu and hit "connect"
+6) Press "Connect to Device," select your serial device from the popup menu and hit "connect"
 
 <img width="745" height="310" alt="image" src="https://github.com/user-attachments/assets/28b78fc5-8e39-45ee-8b53-3e641f35212e" />
 
