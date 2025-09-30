@@ -15,7 +15,7 @@ HOW TO LAUNCH:
      
 4) Open a web browser and navigate to the address provided by your package manager. If successful you should see:
    
-<img width="1569" height="1451" alt="image" src="https://github.com/user-attachments/assets/b59614f4-c302-4a96-a2ea-d2fbee3db96a" />
+<img  width="1142" height="929" alt="image" src="https://github.com/user-attachments/assets/b59614f4-c302-4a96-a2ea-d2fbee3db96a" />
 
 5) Press "Connect to Device," select your serial device from the popup menu and hit "connect"
 
